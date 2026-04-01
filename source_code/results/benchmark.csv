@@ -1,6 +1,0 @@
-obstacle_type,placement,seed,success,time_to_first_move,fleet_clearance_time,graph_diffs,llm_tokens,collisions,steps_run,wall_time_s,ablation_no_graph,ablation_no_leader,ablation_no_repo
-fallen_tree,near,0,1,0,204,0,0,12,205,1.71,0,0,0
-fallen_tree,near,1,1,0,204,0,0,12,205,1.52,0,0,0
-fallen_tree,near,2,1,0,204,0,0,12,205,1.53,0,0,0
-fallen_tree,near,3,1,0,204,0,0,12,205,1.53,0,0,0
-fallen_tree,near,4,1,0,204,0,0,12,205,1.49,0,0,0
