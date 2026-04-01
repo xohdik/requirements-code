@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {"name":"Python Debugger: Current File","type":"debugpy","request":"launch","program":"${file}","console":"integratedTerminal"},
+
+        {
+            "name": "Debug AV Simulation",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/Users/mac/Desktop/Fleet Simulation/Simulations/simulation_modules/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "python": "/Users/mac/miniforge3/envs/metadrive_env/bin/python",
+            "env": {
+                "PYTHONPATH": "/Users/mac/Desktop/Fleet Simulation/Simulations/simulation_modules",
+                "CONDA_DEFAULT_ENV": "metadrive_env",
+                "PATH": "/Users/mac/miniforge3/envs/metadrive_env/bin:${env:PATH}"
+            },
+            "cwd": "/Users/mac/Desktop/Fleet Simulation/Simulations/simulation_modules"
+        }
+    ]
+}
