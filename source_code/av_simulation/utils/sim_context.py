@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import time
@@ -92,13 +91,52 @@ class PerformanceProfiler:
         print("=" * 60 + "\n")
 
 class EnhancedMultiAgentEnv(MultiAgentMetaDrive):
-    """MetaDrive multi-agent environment with lidar + depth fusion support."""
+    """
+    MetaDrive multi-agent env — lidar+depth fusion + termination fix [P3-BUG].
+
+    Overrides _is_terminated_or_truncated so crash_object_done,
+    crash_vehicle_done, and out_of_road_done are fully suppressed.
+    Agents only terminate on genuine arrive_dest or horizon.
+    """
 
     @classmethod
     def default_config(cls):
         config = super().default_config()
-        config.update({"use_semantic": False, "use_depth": False})
+        config.update({
+            "use_semantic":       False,
+            "use_depth":          False,
+            "crash_vehicle_done": False,
+            "crash_object_done":  False,
+            "out_of_road_done":   False,
+        })
         return config
+
+    def _is_terminated_or_truncated(self, vehicle_id, vehicle):
+        """Suppress all crash/out-of-road termination — only arrive_dest ends episode."""
+        try:
+            result = super()._is_terminated_or_truncated(vehicle_id, vehicle)
+        except Exception:
+            return False, False, {}
+
+        if len(result) == 3:
+            terminated, truncated, info = result
+        elif len(result) == 2:
+            done, info = result
+            terminated, truncated = done, False
+        else:
+            return False, False, {}
+
+        # Only allow genuine destination arrival
+        if isinstance(info, dict) and not info.get("arrive_dest", False):
+            terminated = False
+            truncated  = False
+            # Clear flags so MetaDrive internals don't re-raise them
+            for key in ("out_of_road", "crash_vehicle", "crash_object",
+                        "out_of_route"):
+                if key in info:
+                    info[key] = False
+
+        return terminated, truncated, info
 
     @staticmethod
     def fuse_lidar_depth(
@@ -348,10 +386,16 @@ class RealWorldDataLoader:
 def attach_front_camera(env, vehicle) -> None:
     """Attach an offscreen front-facing camera to *vehicle*.
 
-    Camera info is stored in the module-level ``_front_cameras`` registry
-    keyed by ``vehicle.name``.
+    Silently skips if rendering is disabled (headless/no_render mode).
     """
-    agent_id  = vehicle.name
+    agent_id = vehicle.name
+
+    # Guard: no-render mode has no graphics window
+    if (not hasattr(env, "engine") or env.engine is None
+            or not hasattr(env.engine, "win") or env.engine.win is None):
+        print(f"[CAM] No render window — camera skipped for {agent_id[:8]}")
+        return
+
     fb_props  = FrameBufferProperties()
     fb_props.setRgbColor(True)
     fb_props.setDepthBits(16)
@@ -395,10 +439,15 @@ def attach_front_camera(env, vehicle) -> None:
 def capture_agent_frame(env, vehicle) -> PILImage.Image:
     """Capture a PIL RGB image from the vehicle's front camera (or main cam).
 
-    Falls back to the main window screenshot when no offscreen buffer exists.
-    The raw image is also saved to ``debug_frame_<id>.jpg`` for inspection.
+    Returns a blank image in headless/no-render mode.
     """
     agent_id = vehicle.name
+
+    # Guard: headless mode — no window, return blank image
+    if (not hasattr(env, "engine") or env.engine is None
+            or not hasattr(env.engine, "win") or env.engine.win is None):
+        return PILImage.new("RGB", (cfg.FRONT_CAM_W, cfg.FRONT_CAM_H))
+
     cam_info = _front_cameras.get(agent_id)
 
     if cam_info is not None:

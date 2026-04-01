@@ -140,4 +140,16 @@ def parse_args() -> argparse.Namespace:
                    help="Maximum simulation steps") # --steps: overrides SIMULATION_STEPS constant.
     p.add_argument("--num_obstacles",    type=int,   default=1,
                    help="Number of static obstacles to spawn")  # --num_obstacles: number of static obstacles (e.g., construction barrels, debris).
+    # [P3] Benchmark / headless flags
+    p.add_argument("--no_render",        action="store_true",
+                   help="Disable rendering for headless benchmark runs")
+    p.add_argument("--seed",             type=int,   default=42,
+                   help="Random seed for obstacle placement")
+    # [F11] Ablation flags
+    p.add_argument("--no_graph",         action="store_true",
+                   help="Disable SemanticGraph (ablation baseline)")
+    p.add_argument("--no_leader",        action="store_true",
+                   help="Disable leader election (ablation baseline)")
+    p.add_argument("--no_strategy_repo", action="store_true",
+                   help="Disable strategy repository (ablation baseline)")
     return p.parse_args()

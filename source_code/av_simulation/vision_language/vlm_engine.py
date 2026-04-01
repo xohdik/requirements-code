@@ -58,6 +58,7 @@ class VLMEngine:
     )
 
     def __init__(self) -> None:
+        self._available = True
         self._verify_server()
 
     # ------------------------------------------------------------------
@@ -70,20 +71,27 @@ class VLMEngine:
             resp = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
             resp.raise_for_status()
         except requests.exceptions.ConnectionError:
-            raise RuntimeError(
-                f"\n[VLM] Cannot reach Ollama at {OLLAMA_HOST}.\n"
-                "  Start it with:  ollama serve"
+            print(
+                f"\n[VLM] WARNING: Cannot reach Ollama at {OLLAMA_HOST}.\n"
+                "  VLM disabled — lidar-only fallback active.\n"
+                "  To enable VLM: run 'ollama serve' in another terminal."
             )
+            self._available = False
+            return
         available = [m["name"] for m in resp.json().get("models", [])]
         if not any(
             m == OLLAMA_MODEL or m.startswith(OLLAMA_MODEL + ":")
             for m in available
         ):
-            raise RuntimeError(
-                f"\n[VLM] Model '{OLLAMA_MODEL}' not found.\n"
-                f"  Pull: ollama pull {OLLAMA_MODEL}\n"
-                f"  Available: {available}"
+            print(
+                f"\n[VLM] WARNING: Model '{OLLAMA_MODEL}' not found.\n"
+                f"  Pull it with: ollama pull {OLLAMA_MODEL}\n"
+                f"  Available: {available}\n"
+                "  VLM disabled — lidar-only fallback active."
             )
+            self._available = False
+            return
+        self._available = True
         print(f"[VLM] Ollama OK — model '{OLLAMA_MODEL}'")
 
     def _pil_to_b64(self, img: PILImage.Image) -> str:
@@ -97,11 +105,9 @@ class VLMEngine:
     # ------------------------------------------------------------------
 
     def describe_scene(self, img: PILImage.Image) -> str:
-        """Run LLaVA inference on *img* and return the raw text response.
-
-        Returns an empty string on timeout or any request error so callers
-        can fall back to lidar-only detection without crashing.
-        """
+        """Run LLaVA inference on *img* and return the raw text response."""
+        if not self._available:
+            return ""   # lidar fallback handles detection
         payload = {
             "model":   OLLAMA_MODEL,
             "prompt":  self.SCENE_PROMPT,
